@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from "vue";
+import EditorHeader from "@/components/EditorHeader.vue";
+import { useEditorHeader } from "@/stores/editorHeader";
+import { storeToRefs } from "pinia";
+import { exec } from "@/utils/editor-utils";
 
 const props = defineProps({
   value: {
@@ -8,77 +12,54 @@ const props = defineProps({
   },
 });
 
+const useEditorHeaderStore = useEditorHeader();
+const { textType } = storeToRefs(useEditorHeaderStore);
+
 const el = ref<HTMLElement>();
 const emit = defineEmits(["input"]);
 
 onMounted(() => {
   el.value!.innerHTML = props.value;
+
+  el.value!.focus();
 });
 
 watch(
   () => props.value,
-  (newValue, oldValue) => {
-    console.log("newValue: ", newValue);
-    console.log("oldValue: ", oldValue);
+  (newValue) => {
     if (el.value!.innerHTML !== newValue) el.value!.innerHTML = newValue;
   }
 );
 
-const exec = (command: string, value?: string) =>
-  document.execCommand(command, false, value);
-
-const queryCommandValue = (command: string) =>
-  document.queryCommandValue(command);
+watch(
+  textType,
+  (newValue) => {
+    console.log("newValue: ", newValue);
+  },
+  { deep: true }
+);
 
 const handleInput = (e: InputEvent | KeyboardEvent) => {
   const { firstChild } = e.target as HTMLElement;
 
-  if (firstChild && firstChild.nodeType === 3) exec("formatBlock", "<p>");
-  else if (el.value!.innerHTML === "<br>") el.value!.innerHTML = "";
+  if (firstChild && firstChild.nodeType === 3) {
+    exec("formatBlock", "<p>");
+  } else if (el.value!.innerHTML === "<br>") el.value!.innerHTML = "";
 
   emit("input", el.value!.innerHTML);
 };
 const handleDelayedInput = (e: KeyboardEvent) => {
   nextTick(() => handleInput(e));
 };
-const handleKeydown = (e: KeyboardEvent) => {
-  console.log("e: ", e);
-  if (
-    e.key.toLowerCase() === "enter" &&
-    queryCommandValue("formatBlock") === "blockquote"
-  ) {
-    nextTick(() => exec("formatBlock", "<p>"));
-  } else if (e.ctrlKey) {
-    switch (e.key.toLowerCase()) {
-      case "b":
-        e.preventDefault();
-        nextTick(() => exec("bold"));
-        break;
-
-      case "i":
-        e.preventDefault();
-        nextTick(() => exec("italic"));
-        break;
-
-      case "u":
-        e.preventDefault();
-        nextTick(() => exec("underline"));
-        break;
-
-      default:
-        break;
-    }
-  }
-};
 </script>
 
 <template>
+  <EditorHeader />
   <div
-    class="border p-1"
+    class="border p-1 h-20 focus:outline-none"
     ref="el"
     contenteditable
     @input="handleInput"
-    @keydown="handleKeydown"
   />
 </template>
 
